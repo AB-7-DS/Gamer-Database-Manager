@@ -25,6 +25,15 @@ class Player{
     Player(string &n,string &id,string &ph,string &em,string &pass,Games_played_class* log):name(n),playerID(id),phone_number(ph),email(em),password(pass),GP_head(log),left(NULL),right(NULL){}
     void addGameLog(Games_played_class* log)
     {
+          Games_played_class* current = GP_head;
+        while (current) {
+            if (current->gameID== log->gameID) {
+                cout << "Error: Game with ID " << log->gameID << " already exists for player " << playerID << "." << endl;
+                delete log;
+                return;
+            }
+            current = current->next;
+        }
         log->next=  GP_head;
         GP_head=log;
     }
@@ -49,9 +58,36 @@ class Players_DataBase{
     public:
     Player* root;  
     Players_DataBase():root(NULL){}
-
+    Player* search(Player* node, const string& player_id) const {
+        if (!node || node->playerID == player_id) return node;
+        if (player_id < node->playerID) return search(node->left, player_id);
+        else return search(node->right, player_id);
+    }
     void insertPlayer(Player* player){
-
+            if (search(root, player->playerID)) {
+            cout << "Error: Player with ID " << player->playerID << " already exists." << endl;
+            delete player;
+            
+        }
+            if(root == NULL)
+            {
+                root = player;
+                return;
+            }
+            Player* current= root;
+            Player* parent = NULL;
+            while(current)
+            {
+                parent=current;
+                if(player->playerID<current->playerID)
+                {
+                  current=current->left;
+                  if(!current) parent->left = player;
+                }else{
+                  current = current->right;
+                  if(!current) parent->right = player;
+                }
+            }
     }
     void Loading_Data_Player(string& fileName,int seed, int limit)
     {
@@ -106,16 +142,43 @@ class Players_DataBase{
        file.close();
 
     }
-
+   
 };
 class Games_DataBase{
     public:
     Game* root;
     Games_DataBase():root(NULL){}
-     
-    void insertGame(Game* player){
-
-
+    
+    Game* search(Game* node, const string& game_id) const {
+        if (!node || node->gameID == game_id) return node;
+        if (game_id < node->gameID) return search(node->left, game_id);
+        else return search(node->right, game_id);
+    }
+        void insertGame(Game* game){
+             if (search(root, game->gameID)) {
+            cout << "Error: Player with ID " << game->gameID << " already exists." << endl;
+            delete game;
+           
+        }
+            if(root == NULL)
+            {
+                root = game;
+                return;
+            }
+            Game* current= root;
+            Game* parent = NULL;
+            while(current)
+            {
+                parent=current;
+                if(game->gameID<current->gameID)
+                {
+                  current=current->left;
+                  if(!current) parent->left = game;
+                }else{
+                  current = current->right;
+                  if(!current) parent->right = game;
+                }
+            }
     }
     void Loading_Data_Game(string& fileName,int seed, int limit)
     {
