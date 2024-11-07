@@ -71,7 +71,7 @@ class Players_DataBase{
         }
             if(root == NULL)
             {
-                root = player;
+                root = player;      
                 return;
             }
             Player* current= root;
@@ -135,7 +135,7 @@ class Players_DataBase{
         achievement = stoi(line);
         
         Games_played_class* log = new Games_played_class(game_id,hours,achievement);
-        Player* player = new Player(Player_id,name,phone,email,password,log);
+        Player* player = new Player(name,Player_id,phone,email,password,log);
 
         insertPlayer(player);
        }
@@ -214,7 +214,7 @@ class Players_DataBase{
     void savePlayerDataToFile(Player* node, ofstream& file) const {
         if (node == NULL) return;
 
-        file << node->playerID << "," << node->name << "," << node->phone_number << "," << node->email << "," << node->password << endl;
+        file << node->playerID << "," << node->name << "," << node->phone_number << "," << node->email << "," << node->password;
         Games_played_class* game = node->GP_head;
         while (game != nullptr) {
             file << game->gameID << "," << game->hours_played << "," << game->achievements_unlock << endl;
@@ -229,7 +229,96 @@ class Players_DataBase{
         savePlayerDataToFile(root, file);
         file.close();
     }
+       //  function to calculate the height of the binary tree
+int getHeight(Player* node) {
+    if (node == nullptr) {
+        return 0;
+    }
+    int leftHeight = getHeight(node->left);
+    int rightHeight = getHeight(node->right);
+    return max(leftHeight, rightHeight) + 1;
+}
+
+//  function to print all nodes at a given level
+void printLevel(Player* node, int level) {
+    if (node == nullptr) {
+        return;
+    }
+    if (level == 1) {
+        cout << "(Player ID --+" << node->playerID << ") ==> ";
+    } else if (level > 1) {
+        printLevel(node->left, level - 1);
+        printLevel(node->right, level - 1);
+    }
+}
+
+// Function to show up to n levels of the binary tree
+void showNLevels(int n) {
+    if (root == nullptr) {
+        cout << "Player database is empty." << endl;
+        return;
+    }
+
+    int totalLevels = getHeight(root);
+    cout << "Total Levels in the Tree: " << totalLevels << endl;
+
+    // Traverse up to the specified level
+    for (int i = 1; i <= n && i <= totalLevels; ++i) {
+        cout << "Level " << i - 1 << ": ";
+        printLevel(root, i);
+        cout << endl;
+    }
+
+    if (n > totalLevels) {
+        cout << "Warning: Requested level exceeds the total levels in the tree." << endl;
+    }
+}
+    void showPlayerLevel(string& id) {
+    int level = findPlayerLevelRecursive(root, id, 0);
+    if (level != -1) {
+        cout << "Player with ID " << id << " is at level " << level << "." << endl;
+    } else {
+        cout << "Player with ID " << id << " not found." << endl;
+    }
+}
+
+int findPlayerLevelRecursive(Player* node, string& id, int currentLevel) {
+    if (node == nullptr) {
+        return -1;
+    }
+    if (node->playerID == id) {
+        return currentLevel;
+    }
+    int leftLevel = findPlayerLevelRecursive(node->left, id, currentLevel + 1);
+    if (leftLevel != -1) {
+        return leftLevel;
+    }
+    return findPlayerLevelRecursive(node->right, id, currentLevel + 1);
+}
+
+void showPlayerPath( string& id) {
+    if (!findPlayerPath(root, id)) {
+        cout << "Player with ID " << id << " not found." << endl;
+    }
+}
+
+bool findPlayerPath(Player* node, string& id) {
+    if (node == nullptr) {
+        return false;
+    }
+    cout <<"|" <<node->playerID <<" : "<<node->name<<"|"<< "->";
+    if (node->playerID == id) {
+        return true;
+    }
+    if (findPlayerPath(node->left, id) || findPlayerPath(node->right, id)) {
+        return true;
+    }
+    return false;
+}
 };
+
+/*     ////////////Gamers DataBase Class\\\\\\\\\\\\\\\\*/
+
 class Games_DataBase{
     public:
     Game* root;
@@ -324,33 +413,54 @@ class Games_DataBase{
         saveGameDataToFile(root, file);
         file.close();
     }
-    void showNLevels(int n) {
+      //  function to calculate the height of the binary tree
+int getHeight(Game* node) {
+    if (node == nullptr) {
+        return 0;
+    }
+    int leftHeight = getHeight(node->left);
+    int rightHeight = getHeight(node->right);
+    return max(leftHeight, rightHeight) + 1;
+}
+
+//  function to print all nodes at a given level
+void printLevel(Game* node, int level) {
+    if (node == nullptr) {
+        return;
+    }
+    if (level == 1) {
+       cout << "(Game ID --+" << node->gameID << ") ==> ";
+    } else if (level > 1) {
+        printLevel(node->left, level - 1);
+        printLevel(node->right, level - 1);
+    }
+}
+
+// Function to show up to n levels of the binary tree
+void showNLevels(int n) {
     if (root == nullptr) {
         cout << "Player database is empty." << endl;
         return;
     }
-    int currentLevel = 0;
-    showNLevelsRecursive(root, currentLevel, n);
-}
 
-void showNLevelsRecursive(Game* node, int currentLevel, int maxLevel) {
-    if (node == nullptr) {
+    int totalLevels = getHeight(root);
+    cout << "Total Levels in the Tree: " << totalLevels << endl;
+
+    // Traverse up to the specified level
+    for (int i = 1; i <= n && i <= totalLevels; ++i) {
+        cout << "Level " << i - 1 << ": ";
+        printLevel(root, i);
+        cout << endl;
+    }
+
+    if (n > totalLevels) {
+        cout << " Requested level exceeds the total levels in the tree. Cant go any further...." << endl;
         return;
-    }
-    if (currentLevel < maxLevel) {
-        cout << "Level " << currentLevel << ": Game ID " << node->gameID << endl;
-        showNLevelsRecursive(node->left, currentLevel + 1, maxLevel);
-        showNLevelsRecursive(node->right, currentLevel + 1, maxLevel);
-    } else if (currentLevel == maxLevel) {
-        cout << "Level " << currentLevel << ": Game ID " << node->gameID << endl;
-    }
-    if (currentLevel >= maxLevel) {
-        cout << "Level Limit was Reached, can't go further." << endl;
     }
 }
 
 void showGameLevel(string& id) {
-    int level = findPlayerLevelRecursive(root, id, 0);
+    int level = findGameLevelRecursive(root, id, 0);
     if (level != -1) {
         cout << "Player with ID " << id << " is at level " << level << "." << endl;
     } else {
@@ -358,18 +468,18 @@ void showGameLevel(string& id) {
     }
 }
 
-int findPlayerLevelRecursive(Game* node, string& id, int currentLevel) {
+int findGameLevelRecursive(Game* node, string& id, int currentLevel) {
     if (node == nullptr) {
         return -1;
     }
     if (node->gameID == id) {
         return currentLevel;
     }
-    int leftLevel = findPlayerLevelRecursive(node->left, id, currentLevel + 1);
+    int leftLevel = findGameLevelRecursive(node->left, id, currentLevel + 1);
     if (leftLevel != -1) {
         return leftLevel;
     }
-    return findPlayerLevelRecursive(node->right, id, currentLevel + 1);
+    return findGameLevelRecursive(node->right, id, currentLevel + 1);
 }
 
 void showGamePath( string& id) {
@@ -382,7 +492,7 @@ bool findGamePath(Game* node, string& id) {
     if (node == nullptr) {
         return false;
     }
-    cout << node->gameID <<" : "<<node->Name<< "->";
+    cout<<"|" << node->gameID <<" : "<<node->Name<<"|"<< "->";
     if (node->gameID == id) {
         return true;
     }
@@ -396,6 +506,8 @@ void displayMainMenu() {
     cout << "============================================================" << endl;
     cout << "                  |  Gamers Database Manager  |             " << endl;
     cout << "------------------------------------------------------------" << endl;
+    cout<<"CHOOSE TTHE DATABASE:   "<<endl;
+      cout << " |1|  Player Database       |       |2|  Gamer Database      " << endl;
   
 }
 void displayPlayerOptions() {
@@ -404,8 +516,8 @@ void displayPlayerOptions() {
     cout << "[3] Delete Player" << endl;
     cout << "[4] Display All Players" << endl;
     cout << "[5] Save Player Data" << endl;
-    cout << "[6] Show Player DB Layers" << endl;
-     cout << "[7] Show Player Layer Number" << endl;
+    cout << "[6] Show Player DB Levels" << endl;
+     cout << "[7] Show Player Level Number" << endl;
      cout << "[8] Show Player Path" << endl;
      cout << "[9] Back to main Menu" << endl;
      
@@ -416,13 +528,13 @@ void displayGameOptions() {
     cout << "[2] Search Game" << endl;
     cout << "[3] Display All Games" << endl;
     cout << "[4] Save Game Data" << endl;
-     cout << "[5] Show Game DB Layers" << endl;
-     cout << "[6] Show Game Layer Number" << endl;
+     cout << "[5] Show Game DB Levels" << endl;
+     cout << "[6] Show Game Level Number" << endl;
      cout << "[7] Show Game Path" << endl;
      cout << "[8] Back to main Menu" << endl;
 }
 void performPlayerAction(Players_DataBase& playerDB, int choice) {
-    string playerID, name, phone, email, password;
+    string playerID, name, phone, email, password,key;
     switch (choice) {
         case 1: {  
             cout << "Enter Player ID: ";
@@ -471,7 +583,26 @@ void performPlayerAction(Players_DataBase& playerDB, int choice) {
             break;
         }
         case 6: {
-            return;
+               int n;
+            cout << "Enter the number of layers to display: ";
+            cin >> n;
+            playerDB.showNLevels(n);
+            break;
+        }
+          case 7: {
+           
+        cout << "Enter the primary key to find its layer: ";
+        cin >> key;
+        playerDB.showPlayerLevel(key);
+            break;
+        }
+        case 8: {
+            
+            cout << "Enter the primary key to show the path (Preorder Traversal): ";
+            cin >> key;
+            cout << "Preorder Traversal path to find node " << key << ": ";
+            playerDB.showPlayerPath(key);
+            break;
         }
         default:
             cout << "Invalid choice. Please try again." << endl;
@@ -576,7 +707,7 @@ int main()
                     displayPlayerOptions();
                     cout << "Enter your choice: ";
                     cin >> subChoice;
-                    if (subChoice == 6) break;
+                    if (subChoice == 12) break;
                     performPlayerAction(PDM, subChoice);
                 }
                 break;
