@@ -89,84 +89,108 @@ class Players_DataBase{
                 }
             }
     }
-    void Loading_Data_Player(const string& fileName,int seed, int limit)
+ void Loading_Data_Player(const string& fileName, int seed, int limit)
+{
+    srand(seed);
+    ifstream file(fileName);
+    string line;
+
+    while(getline(file, line))
     {
-        srand(seed);
-       ifstream file(fileName);
-       string line;
+        if(rand() % 1000 < limit) continue;
 
-       while(getline(file,line))
-       {
-         if(rand()% 1000 < limit) continue; 
+        int pos = 0;
+        string Player_id, name, phone, email, password, game_id;
+        float hours = 0;
+        int achievement = 0;
 
-         int pos = 0;
-         string Player_id,name,phone,email,password,game_id;
-         float hours=0;
-         int achievement=0;
-
-         pos = line.find(',');
-         Player_id=line.substr(0,pos);
-         line.erase(0,pos + 1);
-
-         pos = line.find(',');
-         name=line.substr(0,pos);
-         line.erase(0,pos + 1);
+        // Parse the data from the line
+        pos = line.find(',');
+        Player_id = line.substr(0, pos);
+        line.erase(0, pos + 1);
 
         pos = line.find(',');
-         phone=line.substr(0,pos);
-         line.erase(0,pos + 1);
+        name = line.substr(0, pos);
+        line.erase(0, pos + 1);
 
-         pos = line.find(',');
-         email=line.substr(0,pos);
-         line.erase(0,pos + 1);
+        pos = line.find(',');
+        phone = line.substr(0, pos);
+        line.erase(0, pos + 1);
 
-         pos = line.find(',');
-         password=line.substr(0,pos);
-         line.erase(0,pos + 1);
+        pos = line.find(',');
+        email = line.substr(0, pos);
+        line.erase(0, pos + 1);
 
-         pos = line.find(',');
-        game_id=line.substr(0,pos);
-         line.erase(0,pos + 1);
+        pos = line.find(',');
+        password = line.substr(0, pos);
+        line.erase(0, pos + 1);
 
-         pos = line.find(',');
-         hours= stof(line.substr(0, pos));
-         line.erase(0,pos + 1);
+        // Process multiple games played by each player
+        Player* existingPlayer = search(root, Player_id);  // 'root' is the root of the player BST
 
-        achievement = stoi(line);
-        
-        Games_played_class* log = new Games_played_class(game_id,hours,achievement);
-        Player* player = new Player(name,Player_id,phone,email,password,log);
+        // Now loop over the remaining part of the line to find all games played by the player
+        while (!line.empty())
+        {
+            // Extract the game ID
+            pos = line.find(',');
+            game_id = line.substr(0, pos);
+            line.erase(0, pos + 1);
 
-        insertPlayer(player);
-       }
-       file.close();
+            // Extract the hours played
+            pos = line.find(',');
+            hours = stof(line.substr(0, pos));
+            line.erase(0, pos + 1);
 
-    }
-   void printInOrder() const {
-        printInOrderRecursive(root);
-    }
+            // Extract the achievements unlocked
+            achievement = stoi(line);
 
-    void printInOrderRecursive(Player* node) const {
-        if (node == nullptr) return;
+           
+            Games_played_class* log = new Games_played_class(game_id, hours, achievement);
 
-        printInOrderRecursive(node->left);
-
-        cout << "Player ID: " << node->playerID << ", Name: " << node->name << endl;
-        cout << "Phone: " << node->phone_number << ", Email: " << node->email << endl;
-        cout << "Password: " << node->password << endl;
-        cout << "  Games Played:" << endl;
-
-        Games_played_class* game = node->GP_head;
-        while (game != nullptr) {
-            cout << "    Game ID: " << game->gameID
-                 << ", Hours Played: " << game->hours_played
-                 << ", Achievements Unlocked: " << game->achievements_unlock << endl;
-            game = game->next;
+          
+            if (existingPlayer) {
+                existingPlayer->addGameLog(log);  // Adds the log to the player's game list
+            } else {
+                
+                Player* newPlayer = new Player(name, Player_id, phone, email, password, log);
+                insertPlayer(newPlayer);  // Insert the new player into the player database
+                break;  
+            }
         }
-
-        printInOrderRecursive(node->right);
     }
-      Player* deletePlayer(Player* node, const string& player_id) {
+
+    file.close();
+}
+bool hasPlayedGame(Player* player, const string& gameID) {
+    Games_played_class* current = player->GP_head;  // Start from the head of the games played list
+
+    // Traverse the linked list of games played by the player
+    while (current != nullptr) {
+        if (current->gameID == gameID) {
+            return true;  // Found the game
+        }
+        current = current->next;
+    }
+
+    return false;  // Game not found
+}
+
+bool playerHasPlayedGame(Player* root, const string& playerID, const string& gameID) {
+    // Step 1: Search for the player in the BST
+    Player* player = search(root, playerID);
+
+    // If the player is not found, return false
+    if (player == nullptr) {
+        cout << "Player not found!" << endl;
+        return false;
+    }
+
+    // Step 2: Search for the game in the player's game list
+    return hasPlayedGame(player, gameID);
+}
+
+
+     Player* deletePlayer(Player* node, const string& player_id) {
         if (node == NULL) return node;
 
         if (player_id < node->playerID) {
@@ -315,6 +339,68 @@ bool findPlayerPath(Player* node, string& id) {
     }
     return false;
 }
+
+void editPlayer(Player*& root, const string& playerID, const string& newID, const string& newName, const string& newPhone, const string& newEmail, const string& newPassword) {
+    if (!root) return;
+    
+    if (root->playerID == playerID) {
+        // Update player details
+        root->name = newName;
+        root->phone_number = newPhone;
+        root->email = newEmail;
+        root->password = newPassword;
+
+        // If playerID needs to be changed, reinsert node in the BST
+        if (newID != playerID) {
+            // Create temporary non-const copies of each argument
+            string tempName = newName;
+            string tempID = newID;
+            string tempPhone = newPhone;
+            string tempEmail = newEmail;
+            string tempPassword = newPassword;
+
+            Player* newNode = new Player(tempName, tempID, tempPhone, tempEmail, tempPassword, root->GP_head);
+            deletePlayer(root, playerID); // Function to remove the current node from the BST
+            insertPlayer(newNode);      // Use provided insert function
+        }
+        return;
+    } 
+    else if (playerID < root->playerID) {
+        // Recursively search in the left subtree
+        editPlayer(root->left, playerID, newID, newName, newPhone, newEmail, newPassword);
+    } 
+    else {
+        // Recursively search in the right subtree
+        editPlayer(root->right, playerID, newID, newName, newPhone, newEmail, newPassword);
+    }
+}
+void showPlayerDetails(Player* root, const string& playerID) {
+    if (!root) return;
+    if(root->playerID != playerID){  cout << "Game not found." << endl;return;}
+    if (root->playerID == playerID) {
+        cout << "Player ID: " << root->playerID << endl;
+        cout << "Name: " << root->name << endl;
+        cout << "Phone: " << root->phone_number << endl;
+        cout << "Email: " << root->email << endl;
+        
+        // Display games played by the player
+        Games_played_class* currentGame = root->GP_head;
+        cout << "Games Played:" << endl;
+        while (currentGame) {
+            cout << " - Game ID: " << currentGame->gameID 
+                 << ", Hours Played: " << currentGame->hours_played 
+                 << ", Achievements Unlocked: " << currentGame->achievements_unlock << endl;
+            currentGame = currentGame->next;
+        }
+       
+        return;
+    } else if (playerID < root->playerID) {
+        showPlayerDetails(root->left, playerID);
+    } else {
+        showPlayerDetails(root->right, playerID);
+    }
+}
+
 };
 
 /*     ////////////Gamers DataBase Class\\\\\\\\\\\\\\\\*/
@@ -501,6 +587,87 @@ bool findGamePath(Game* node, string& id) {
     }
     return false;
 }
+Game* findMin(Game* node) {
+    while (node->left) node = node->left;
+    return node;
+}
+
+Game* deleteGame(Game* root, const string& gameID) {
+    if (!root) return root;
+
+    if (gameID < root->gameID) {
+        root->left = deleteGame(root->left, gameID);
+    } else if (gameID > root->gameID) {
+        root->right = deleteGame(root->right, gameID);
+    } else {
+        // Node found; handle three cases
+        if (!root->left) {
+            Game* temp = root->right;
+            delete root;
+            return temp;
+        } else if (!root->right) {
+            Game* temp = root->left;
+            delete root;
+            return temp;
+        } else {
+            // Node has two children
+            Game* temp = findMin(root->right);
+            root->gameID = temp->gameID;
+            root->Name = temp->Name;
+            root->Developer = temp->Developer;
+            root->Publisher = temp->Publisher;
+            root->File_size_in_GB = temp->File_size_in_GB;
+            root->downloads = temp->downloads;
+
+            root->right = deleteGame(root->right, temp->gameID);
+        }
+    }
+    return root;
+}
+void showGameDetails(Game* root, const string& gameID) {
+    if (!root) return;
+    if (root->gameID == gameID) {
+        cout << "Game ID: " << root->gameID << endl;
+        cout << "Name: " << root->Name << endl;
+        cout << "Developer: " << root->Developer << endl;
+        cout << "Publisher: " << root->Publisher << endl;
+        cout << "File Size (GB): " << root->File_size_in_GB << endl;
+        cout << "Downloads: " << root->downloads << endl;
+        return;
+    } else if (gameID < root->gameID) {
+        showGameDetails(root->left, gameID);
+    } else {
+        showGameDetails(root->right, gameID);
+    }
+}
+// Edit a game's details
+void editGame(Game*& root, const string& gameID, const string& newID, const string& newName, const string& newDeveloper, const string& newPublisher, float newSize, int newDownloads) {
+    if (!root) return;
+    if (root->gameID == gameID) {
+        // Update fields
+        root->Name = newName;
+        root->Developer = newDeveloper;
+        root->Publisher = newPublisher;
+        root->File_size_in_GB = newSize;
+        root->downloads = newDownloads;
+
+       if (newID != gameID) {
+    string tempID = newID;
+    string tempName = newName;
+    string tempDeveloper = newDeveloper;
+    string tempPublisher = newPublisher;
+    
+    Game* newNode = new Game(tempID, tempName, tempDeveloper, tempPublisher, newSize, newDownloads);
+    deleteGame(root, gameID);  // Define deleteGame to remove a node by gameID
+    insertGame(newNode); // Insert the new node
+}
+        return;
+    } else if (gameID < root->gameID) {
+        editGame(root->left, gameID, newID, newName, newDeveloper, newPublisher, newSize, newDownloads);
+    } else {
+        editGame(root->right, gameID, newID, newName, newDeveloper, newPublisher, newSize, newDownloads);
+    }
+}
 };
 void displayMainMenu() {
     cout << "============================================================" << endl;
@@ -511,27 +678,36 @@ void displayMainMenu() {
   
 }
 void displayPlayerOptions() {
+    cout << "[0] Back to main Menu" << endl;
     cout << "[1] Add New Player" << endl;
     cout << "[2] Search Player" << endl;
     cout << "[3] Delete Player" << endl;
-    cout << "[4] Display All Players" << endl;
+    cout << "[4] Show Player Details " << endl;
     cout << "[5] Save Player Data" << endl;
     cout << "[6] Show Player DB Levels" << endl;
      cout << "[7] Show Player Level Number" << endl;
      cout << "[8] Show Player Path" << endl;
-     cout << "[9] Back to main Menu" << endl;
+    cout<<"[9] Edit an entry"<<endl;
+    cout<<"[10] Has Played Game"<<endl;
+    
+ 
      
 }
 
 void displayGameOptions() {
+    cout<<"[0] Back To Main Menu"<<endl;
     cout << "[1] Add New Game" << endl;
     cout << "[2] Search Game" << endl;
-    cout << "[3] Display All Games" << endl;
+    cout << "[3] Show Game Details" << endl;
     cout << "[4] Save Game Data" << endl;
      cout << "[5] Show Game DB Levels" << endl;
      cout << "[6] Show Game Level Number" << endl;
      cout << "[7] Show Game Path" << endl;
-     cout << "[8] Back to main Menu" << endl;
+      cout << "[7] Show Game Path" << endl;
+     cout << "[8] Delete a Game" << endl;
+     cout<<"[9] Edit an entry"<<endl;
+      cout<<"[10] show Game Details"<<endl;
+       
 }
 void performPlayerAction(Players_DataBase& playerDB, int choice) {
     string playerID, name, phone, email, password,key;
@@ -573,8 +749,11 @@ void performPlayerAction(Players_DataBase& playerDB, int choice) {
             cout << "Player Deleted Successfully!" << endl;
             break;
         }
-        case 4: {  
-            playerDB.printInOrder();
+        case 4: { 
+            cout << "Enter Player ID to Show Details: ";
+            cin >> playerID;
+            Player* foundPlayer = playerDB.search(playerDB.root, playerID);
+           playerDB.showPlayerDetails(foundPlayer,playerID);
             break;
         }
         case 5: {  
@@ -604,9 +783,59 @@ void performPlayerAction(Players_DataBase& playerDB, int choice) {
             playerDB.showPlayerPath(key);
             break;
         }
+        case 9: {  // Edit player details
+            string playerID, newID, name, phone, email, password;
+    
+    cout << "Enter Player ID to Edit: ";
+    cin >> playerID;
+    
+    // Search for the player by playerID
+    Player* playerToEdit = playerDB.search(playerDB.root, playerID);
+    
+    if (playerToEdit) {
+        // Player found, proceed with editing
+        cout << "Enter new Name: ";
+        cin >> name;
+        cout << "Enter new ID: ";
+        cin >> newID;
+        cout << "Enter new Phone Number: ";
+        cin >> phone;
+        cout << "Enter new Email: ";
+        cin >> email;
+        cout << "Enter new Password: ";
+        cin >> password;
+
+        // Call editPlayer to update player details in the BST
+        playerDB.editPlayer(playerDB.root, playerID, newID, name, phone, email, password);
+        
+        cout << "Player details updated successfully!" << endl;
+    } else {
+        cout << "Player not found." << endl;
+    }
+    break;
+        }
+        case 10:
+        {
+            string gameID;
+            cout << "Enter Player ID to check if they have played a game: ";
+            cin >> playerID;
+            cout << "Enter Game ID: ";
+            cin >> gameID;
+
+            // Call playerHasPlayedGame to check if the player has played the specific game
+            bool hasPlayed = playerDB.playerHasPlayedGame(playerDB.root, playerID, gameID);
+
+            if (hasPlayed) {
+                cout << "Player " << playerID << " has played the game " << gameID << "." << endl;
+            } else {
+                cout << "Player " << playerID << " has not played the game " << gameID << "." << endl;
+            }
+            break;
+        }
         default:
             cout << "Invalid choice. Please try again." << endl;
     }
+
 }
 
 void performGameAction(Games_DataBase& gameDB, int choice) {
@@ -649,7 +878,10 @@ void performGameAction(Games_DataBase& gameDB, int choice) {
             break;
         }
         case 3: {  
-            cout << "Displaying All Games..." << endl;
+             cout << "Enter Player ID to Show Details: ";
+            cin >> gameID;
+            Game* foundPlayer = gameDB.search(gameDB.root, gameID);
+           gameDB.showGameDetails(foundPlayer,gameID);
             break;
         }
         case 4: {  
@@ -677,6 +909,56 @@ void performGameAction(Games_DataBase& gameDB, int choice) {
             cin >> key;
             cout << "Preorder Traversal path to find node " << key << ": ";
             gameDB.showGamePath(key);
+            break;
+        }
+        case 8:
+        {
+            cout << "Enter Player ID to Delete: ";
+            cin >> gameID;
+            gameDB.root = gameDB.deleteGame(gameDB.root, gameID);
+            cout << "Player Deleted Successfully!" << endl;
+            break;
+        }
+        case 9: {  // Edit game details
+           string gameID, newID, name, developer, publisher;
+    float newSize;
+    int newDownloads;
+
+    cout << "Enter Game ID to Edit: ";
+    cin >> gameID;
+    
+    // Search for the game by gameID
+    Game* gameToEdit = gameDB.search(gameDB.root, gameID);
+    
+    if (gameToEdit) {
+        // Game found, proceed with editing
+        cout << "Enter new Name: ";
+        cin >> name;
+        cout << "Enter new ID: ";
+        cin >> newID;
+        cout << "Enter new Developer: ";
+        cin >> developer;
+        cout << "Enter new Publisher: ";
+        cin >> publisher;
+        cout << "Enter new Size (float): ";
+        cin >> newSize;
+        cout << "Enter new Downloads (int): ";
+        cin >> newDownloads;
+
+        // Call editGame to update game details in the BST
+        gameDB.editGame(gameDB.root, gameID, newID, name, developer, publisher, newSize, newDownloads);
+        
+        cout << "Game details updated successfully!" << endl;
+    } else {
+        cout << "Game not found." << endl;
+    }
+    break;
+        }
+        case 10: {  // Show game details
+            cout << "Enter Game ID to Show Details: ";
+            cin >> gameID;
+            Game* foundGame = gameDB.search(gameDB.root, gameID);
+            gameDB.showGameDetails(foundGame,gameID);
             break;
         }
         default:
@@ -707,7 +989,7 @@ int main()
                     displayPlayerOptions();
                     cout << "Enter your choice: ";
                     cin >> subChoice;
-                    if (subChoice == 12) break;
+                    if (subChoice == 0) break;
                     performPlayerAction(PDM, subChoice);
                 }
                 break;
@@ -717,7 +999,7 @@ int main()
                     displayGameOptions();
                     cout << "Enter your choice: ";
                     cin >> subChoice;
-                    if (subChoice == 9) break;
+                    if (subChoice == 0) break;
                     performGameAction(GDM, subChoice);
                 }
                 break;
